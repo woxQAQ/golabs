@@ -19,15 +19,9 @@ func GraphSchedule(m map[string][]string) {
 }
 
 var processVertex = func(edges map[string][]chan struct{}, verteies map[string][]chan struct{}, vertex string) {
-	wg := sync.WaitGroup{}
-	wg.Add(len(edges[vertex]))
 	for _, v := range edges[vertex] {
-		go func() {
-			<-v
-			wg.Done()
-		}()
+		<-v
 	}
-	wg.Wait()
 	fmt.Print(vertex)
 	for _, v := range verteies[vertex] {
 		v <- struct{}{}

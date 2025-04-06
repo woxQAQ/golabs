@@ -22,15 +22,9 @@ type Vertex struct {
 
 func (t *Vertex) run(ctrl *sync.WaitGroup) {
 	go func() {
-		wg := sync.WaitGroup{}
-		wg.Add(len(t.inEdges))
 		for _, v := range t.inEdges {
-			go func() {
-				<-v.control
-				wg.Done()
-			}()
+			<-v.control
 		}
-		wg.Wait()
 		t.Worker()
 		for _, v := range t.outEdges {
 			v.control <- struct{}{}
