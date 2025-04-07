@@ -11,9 +11,9 @@ flowchart TD
     A --> B
     A --> C
     B --> D
-    C-->D
+    C --> D
 ```
 
-the `arrow` meaning the goroutine target end stand for need to be run after the source end's goroutine.
+the `arrow` meaning the goroutine target end stands for is run after the source end's goroutine finished.
 
-It requires that all the goroutine need to start at once, and be executed accoring to the input graph.
+It requires that all the goroutine start at once, and be executed accoring to the input graph.
