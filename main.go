@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"golabs/syncx"
+)
 
 func main() {
 	input := map[string][]string{
@@ -8,7 +11,7 @@ func main() {
 		"B": {"A"},
 		"C": {"A"},
 	}
-	t := []Task{
+	t := []syncx.Task{
 		{
 			Id:     "A",
 			Worker: func() { fmt.Print("A") },
@@ -26,5 +29,5 @@ func main() {
 			Worker: func() { fmt.Print("D") },
 		},
 	}
-	GraphScheduleV2(t, input)
+	syncx.GraphScheduleV2(t, input)
 }
