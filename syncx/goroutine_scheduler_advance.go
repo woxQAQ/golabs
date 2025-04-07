@@ -4,35 +4,6 @@ import (
 	"sync"
 )
 
-type Task struct {
-	Id     string
-	Worker func()
-}
-
-type edge struct {
-	from, to *Vertex
-	control  chan struct{}
-}
-
-type Vertex struct {
-	inEdges  []edge
-	outEdges []edge
-	Task
-}
-
-func (t *Vertex) run(ctrl *sync.WaitGroup) {
-	go func() {
-		for _, v := range t.inEdges {
-			<-v.control
-		}
-		t.Worker()
-		for _, v := range t.outEdges {
-			v.control <- struct{}{}
-		}
-		ctrl.Done()
-	}()
-}
-
 func GraphScheduleV2(tasks []Task, deps map[string][]string) {
 	graph := buildTask(tasks, deps)
 	wg := &sync.WaitGroup{}
