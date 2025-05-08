@@ -3,14 +3,20 @@ package syncx
 import (
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
-var temp []string
+var (
+	temp []string
+	mu   sync.Mutex
+)
 
 func simpleWorker(Id string) func() {
 	return func() {
+		mu.Lock()
+		defer mu.Unlock()
 		temp = append(temp, Id)
 	}
 }
@@ -23,21 +29,45 @@ func TestScheduler(t *testing.T) {
 		expected []string
 	}{
 		{
-			name: "",
-			tasks: []Task{
+			"simple test",
+			[]Task{
 				NewTask("A", simpleWorker("A")),
 				NewTask("B", simpleWorker("B")),
 				NewTask("C", simpleWorker("C")),
 				NewTask("D", simpleWorker("D")),
 			},
-			deps: map[string][]string{
+			map[string][]string{
 				"D": {"B", "C"},
 				"B": {"A"},
 				"C": {"A"},
 			},
-			expected: []string{
+			[]string{
 				"ABCD",
 				"ACBD",
+			},
+		},
+		{
+			"complex test",
+			[]Task{
+				NewTask("A", simpleWorker("A")),
+				NewTask("B", simpleWorker("B")),
+				NewTask("C", simpleWorker("C")),
+				NewTask("D", simpleWorker("D")),
+				NewTask("E", simpleWorker("E")),
+				NewTask("F", simpleWorker("F")),
+			},
+			map[string][]string{
+				"D": {"B", "C"},
+				"B": {"A"},
+				"C": {"A"},
+				"E": {"D"},
+				"F": {"E"},
+			},
+			[]string{
+				"ABCDEF",
+				"ACBDEF",
+				"ACDEBF",
+				"ACDEBF",
 			},
 		},
 	}
@@ -48,7 +78,7 @@ func TestScheduler(t *testing.T) {
 			if !slices.Contains(cases[i].expected, strings.Join(temp, "")) {
 				t.Errorf("Expect %s, actual: %s", cases[i].expected, strings.Join(temp, ""))
 			}
-      temp = temp[:0]
+			temp = temp[:0]
 		})
 	}
 }
