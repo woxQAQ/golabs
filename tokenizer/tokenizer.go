@@ -9,6 +9,7 @@ package tokenizer
 import (
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -27,14 +28,17 @@ func (t *Tokenizer) tokenize() []string {
 	delimiter := DEFAULT_DELIMITER
 	res := []string{}
 
+	// tokenPos point to the begin pos of last unparsed token in input rune array
 	tokenPos := 0
+	// stmtPos point to the begin pos of last unparsed statement in input rune array
 	stmtPos := 0
 	nextfunc := t.nextutf8
+	// we assume that the statements have base line number 1
 	t.lines = 1
 
 	push := func(s string) {
 		// if hasPrefixes(s, []string{"#", "--"}) {}
-		s = strings.TrimSpace(s)
+		// s = strings.TrimSpace(s)
 		fmt.Printf("push \"%s\" into res, lines: %d\n", s, t.lines)
 		if t.lines == 1 && hasPrefixes(s, []string{"#", "--"}) {
 			return
@@ -52,6 +56,7 @@ func (t *Tokenizer) tokenize() []string {
 			s = sb.String()
 		}
 		res = append(res, s)
+		t.skipBlank()
 		stmtPos = t.cursor
 		t.lines = 1
 	}
@@ -65,8 +70,9 @@ func (t *Tokenizer) tokenize() []string {
 				push(t.getString(stmtPos, t.cursor))
 			}
 			return res
-		case '\'', '"':
+		case '\'', '"', '`':
 			t.scanString(r)
+			t.skipBlank()
 			tokenPos = t.cursor
 		case ';':
 			if delimiter == DEFAULT_DELIMITER {
@@ -75,53 +81,59 @@ func (t *Tokenizer) tokenize() []string {
 				tokenPos = stmtPos
 			}
 		case ' ', '\n':
+			// why cursor - 1? the space unicode doesn't need to be parsed
 			s := t.getString(tokenPos, t.cursor-1)
 			tokenPos = t.cursor
 			if r == '\n' {
 				t.lines++
 			}
-			if s == "" {
-				// empty token
+			switch {
+			// there are not any unparsed token in front of " ", for example
+			// select * from a; select * from b;
+			//                 ^
+			case s == "":
 				continue
-			}
-			if strings.EqualFold(s, KEYWORD_DELIMITER) {
+			// when meeting the "delimiter" token, for example
+			// DELIMITER //
+			// select * from a;
+			// select * from b;
+			// //
+			// delimiter ;
+			case strings.EqualFold(s, KEYWORD_DELIMITER):
 				delimiter = t.scanMysqlDelimiter()
 				stmtPos = t.cursor
-				tokenPos = stmtPos
-			} else if s == delimiter {
-				// res = append(res, t.getString(stmtPos, t.cursor-1))
+				tokenPos = t.cursor
+			case s == delimiter:
 				push(t.getString(stmtPos, t.cursor-1))
-				// stmtPos = t.cursor
-				tokenPos = stmtPos
-			} else if strings.HasSuffix(s, delimiter) {
+				tokenPos = t.cursor
+			case strings.HasSuffix(s, delimiter):
 				temp := t.getString(stmtPos, t.cursor-1)
 				if delimiter != DEFAULT_DELIMITER {
 					temp = strings.TrimSuffix(temp, delimiter)
 				}
 				push(temp)
-				tokenPos = stmtPos
+				tokenPos = t.cursor
 			}
 		case '/':
 			nr := nextfunc()
 			if nr == '*' {
 				t.scanMultComment()
+				t.skipBlank()
 				tokenPos = t.cursor
 			}
 		case '#':
 			t.scanSingleComment()
+			t.skipBlank()
 			tokenPos = t.cursor
 			// stmtPos = tokenPos
 		case '-':
 			nr := nextfunc()
 			if nr == '-' {
 				t.scanSingleComment()
+				t.skipBlank()
 				tokenPos = t.cursor
 				// stmtPos = tokenPos
 			}
-		case '`':
-			t.scanIdentifier(r)
-			tokenPos = t.cursor
-			// stmtPos = tokenPos
 		default:
 		}
 	}
@@ -209,6 +221,19 @@ func (t *Tokenizer) nextutf8() rune {
 	r, size := utf8.DecodeRuneInString(t.text[t.cursor:])
 	t.cursor += size
 	return r
+}
+
+func (t *Tokenizer) skipBlank() {
+	for {
+		r, size := utf8.DecodeRuneInString(t.text[t.cursor:])
+		if !unicode.IsSpace(r) {
+			return
+		}
+		t.cursor += size
+		if r == '\n' {
+			t.lines++
+		}
+	}
 }
 
 func hasPrefixes(s string, prefixes []string) bool {
