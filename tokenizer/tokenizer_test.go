@@ -28,6 +28,21 @@ func TestBasicSQLSplit(t *testing.T) {
 			input:    `SELECT * FROM users WHERE name = 'John;Doe';`,
 			expected: []string{`SELECT * FROM users WHERE name = 'John;Doe';`},
 		},
+		{
+			name:     "with quoted strings",
+			input:    `SELECT * FROM users WHERE name = 'John'';Doe';`,
+			expected: []string{`SELECT * FROM users WHERE name = 'John'';Doe';`},
+		},
+		{
+			name:     "with quoted strings",
+			input:    `SELECT * FROM users WHERE name = "John;Doe";`,
+			expected: []string{`SELECT * FROM users WHERE name = "John;Doe";`},
+		},
+		{
+			name:     "with quoted strings",
+			input:    `SELECT * FROM users WHERE name = "John;Doe";`,
+			expected: []string{`SELECT * FROM users WHERE name = "John;Doe";`},
+		},
 	}
 
 	for _, tt := range tests {
