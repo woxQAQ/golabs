@@ -1,11 +1,12 @@
-name: pull requests
+name: CICD Push
 
 on:
-  pull_request_target:
-    types: [ labeled,opened,edited ]
+  push:
     branches:
-      - main
-      - release-*
+      - '**'
+    tags-ignore:
+      - '**'
+
 env:
   BASE_BRANCH: origin/main
   GO_VERSION: "1.23"
