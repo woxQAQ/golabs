@@ -27,3 +27,9 @@ jobs:
       - name: go test
         run: |
           go test ./...
+      - name: go race test
+        run: |
+          go test -race ./...
+
+
+      

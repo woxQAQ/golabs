@@ -12,8 +12,16 @@ import (
 	"time"
 )
 
+type carType int
+
+const (
+	CAR_TYPE_NORMAL carType = iota
+	CAR_TYPE_SPECIAL
+)
+
 type car struct {
 	id       int
+	type_    carType
 	callback func(carID int, status lightStatus, m *manager)
 }
 
@@ -137,6 +145,7 @@ func (m *manager) getStatus() lightStatus {
 func Run(ctx context.Context) {
 	m := newManager()
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r_ := rand.New(rand.NewSource(time.Now().UnixNano()))
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
 
 	// Car generation goroutine
@@ -147,7 +156,12 @@ func Run(ctx context.Context) {
 				return
 			// Generate cars periodically
 			case <-time.After(time.Duration(r.Intn(2)+1) * time.Second): // Random interval 1-2 seconds
-				newCar := &car{}
+				newCar := &car{
+					type_: CAR_TYPE_NORMAL,
+				}
+				if r_.Float32() > 0.95 { // Special car logic
+					newCar.type_ = CAR_TYPE_SPECIAL
+				}
 				newCar.callback = func(id int, status lightStatus, mgr *manager) {
 					// Check if car still exists (it might have been deregistered by a previous green light notification)
 					mgr.mu.Lock()
@@ -165,7 +179,7 @@ func Run(ctx context.Context) {
 						return
 					}
 
-					if r.Float32() > 0.95 { // Special car logic
+					if currentCar.type_ == CAR_TYPE_SPECIAL {
 						fmt.Printf("Car %d: Special car, ignoring light status. Passing and deregistering.\n", id)
 						mgr.DeregisterCar(id) // Special cars also leave
 						return
